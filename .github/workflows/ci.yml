@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.24.0 -Force -Scope CurrentUser
+
+      - name: Lint PowerShell
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          $results | Format-Table -AutoSize
+          if ($results | Where-Object Severity -in 'Error', 'Warning') {
+            Write-Error 'PSScriptAnalyzer found warnings or errors'
+            exit 1
+          }
+
+      - name: Validate JSON
+        shell: pwsh
+        run: |
+          # Escape a raw ESC in the shift+enter sendInput binding, should an editor have saved one.
+          (Get-Content ./terminal/settings.json -Raw) -replace [char]27, '\u001b' | ConvertFrom-Json | Out-Null
+          Get-Content ./winget/packages.json -Raw | ConvertFrom-Json | Out-Null
+          # fastfetch's file is JSONC; strip full-line comments before parsing.
+          (Get-Content ./fastfetch/config.jsonc | Where-Object { $_ -notmatch '^\s*//' }) -join "`n" | ConvertFrom-Json | Out-Null
+          Write-Host 'JSON files parse'
+
+      - name: Render a small wallpaper
+        shell: pwsh
+        run: |
+          ./windows/New-Wallpaper.ps1 -OutputDirectory "$env:RUNNER_TEMP/wallpapers" -Width 688 -Height 288 -Preview
+          foreach ($name in 'desktop.png', 'lockscreen.png', 'preview.jpg', 'preview-lockscreen.jpg') {
+            if (-not (Test-Path "$env:RUNNER_TEMP/wallpapers/$name")) { throw "$name was not rendered" }
+          }
+
+      - name: Dry-run the installer (PowerShell 7)
+        shell: pwsh
+        run: ./install.ps1 -WhatIf
+
+      - name: Dry-run the installer (Windows PowerShell 5.1)
+        shell: powershell
+        run: ./install.ps1 -WhatIf
+
+      - name: Status report on a clean machine
+        shell: pwsh
+        run: ./install.ps1 -Status -Skip LockScreen

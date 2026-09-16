@@ -1,0 +1,27 @@
+# Logs / local env
+*.log
+.env
+.env.*
+
+# Windows
+Thumbs.db
+desktop.ini
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Editors / IDEs
+.vscode/
+.idea/
+.vs/
+*.swp
+*~
+*.bak
+*.tmp
+
+# AI tooling
+.claude/
+
+# Per-machine overrides, never committed
+install.local.psd1
+winget/packages.local.json

@@ -1,0 +1,232 @@
+{
+    "$help": "https://aka.ms/terminal-documentation",
+    "$schema": "https://aka.ms/terminal-profiles-schema",
+    "actions":
+    [
+        {
+            "command": "selectAll",
+            "id": "User.profile.ctrla"
+        },
+        {
+            "command":
+            {
+                "action": "sendInput",
+                "input": "\u001b\r"
+            },
+            "id": "User.sendInput.8F63D3A9"
+        }
+    ],
+    "copyFormatting": "none",
+    "copyOnSelect": false,
+    "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+    "keybindings":
+    [
+        {
+            "id": "User.profile.ctrla",
+            "keys": "ctrl+a"
+        },
+        {
+            "id": "Terminal.DuplicatePaneAuto",
+            "keys": "alt+shift+d"
+        },
+        {
+            "id": "User.sendInput.8F63D3A9",
+            "keys": "shift+enter"
+        },
+        {
+            "id": "Terminal.CopyToClipboard",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "Terminal.PasteFromClipboard",
+            "keys": "ctrl+v"
+        }
+    ],
+    "newTabMenu":
+    [
+        {
+            "type": "remainingProfiles"
+        }
+    ],
+    "profiles":
+    {
+        "defaults":
+        {
+            "antialiasingMode": "cleartype",
+            "colorScheme": "Nord",
+            "cursorColor": "#D8DEE9",
+            "cursorShape": "bar",
+            "font":
+            {
+                "face": "Cascadia Mono NF",
+                "size": 11
+            },
+            "historySize": 1000000,
+            "opacity": 75,
+            "padding": "8, 8, 8, 8",
+            "scrollbarState": "always",
+            "useAcrylic": true
+        },
+        "list":
+        [
+            {
+                "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo",
+                "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+                "hidden": false,
+                "name": "Windows PowerShell"
+            },
+            {
+                "commandline": "%SystemRoot%\\System32\\cmd.exe",
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "hidden": false,
+                "name": "Command Prompt"
+            },
+            {
+                "commandline": "pwsh.exe -NoLogo",
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
+                "name": "PowerShell",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "commandline": "pwsh.exe -NoLogo",
+                "elevate": true,
+                "guid": "{dd47d592-45a2-49ad-a414-3f432d8d74e1}",
+                "hidden": false,
+                "name": "PowerShell (Admin)",
+                "tabTitle": "Admin"
+            },
+            {
+                "guid": "{58ad8b0c-3ef8-5f4d-bc6f-13e4c00f2530}",
+                "hidden": false,
+                "name": "Debian",
+                "source": "Windows.Terminal.Wsl"
+            },
+            {
+                "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
+                "hidden": false,
+                "name": "Azure Cloud Shell",
+                "source": "Windows.Terminal.Azure"
+            },
+            {
+                "guid": "{c30690a1-5608-5e6a-9cf8-92f5cbbb136f}",
+                "hidden": false,
+                "name": "Developer Command Prompt for VS 18",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{058b7e9e-4c19-58e1-822f-dac563d75058}",
+                "hidden": false,
+                "name": "Developer PowerShell for VS 18",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
+                "hidden": false,
+                "name": "Git Bash",
+                "source": "Git"
+            },
+            {
+                "guid": "{4d5ae80e-f349-5548-b303-10e4bc766fd3}",
+                "hidden": false,
+                "name": "RHEL-10",
+                "source": "Microsoft.WSL"
+            },
+            {
+                "guid": "{b1a4d2c8-6f3e-4a7b-9e2d-1c8f5a3b7d91}",
+                "hidden": false,
+                "name": "GitHub Copilot",
+                "source": "DevConfig"
+            },
+            {
+                "guid": "{bc689851-3288-57f1-8444-11f9f3803654}",
+                "hidden": true,
+                "name": "Ubuntu",
+                "source": "Microsoft.WSL"
+            },
+            {
+                "guid": "{b9471bcd-1d41-0698-65e5-57b480a18442}",
+                "hidden": false,
+                "name": "Ubuntu",
+                "source": "ComfortShell"
+            }
+        ]
+    },
+    "schemes":
+    [
+        {
+            "background": "#2E3440",
+            "black": "#3B4252",
+            "blue": "#81A1C1",
+            "brightBlack": "#4C566A",
+            "brightBlue": "#81A1C1",
+            "brightCyan": "#8FBCBB",
+            "brightGreen": "#A3BE8C",
+            "brightPurple": "#B48EAD",
+            "brightRed": "#BF616A",
+            "brightWhite": "#ECEFF4",
+            "brightYellow": "#EBCB8B",
+            "cursorColor": "#D8DEE9",
+            "cyan": "#88C0D0",
+            "foreground": "#D8DEE9",
+            "green": "#A3BE8C",
+            "name": "Nord",
+            "purple": "#B48EAD",
+            "red": "#BF616A",
+            "selectionBackground": "#4C566A",
+            "white": "#E5E9F0",
+            "yellow": "#EBCB8B"
+        }
+    ],
+    "theme": "Nord",
+    "themes":
+    [
+        {
+            "name": "Nord",
+            "tab":
+            {
+                "background": "terminalBackground",
+                "iconStyle": "default",
+                "showCloseButton": "always",
+                "unfocusedBackground": "#3B4252FF"
+            },
+            "tabRow":
+            {
+                "background": "terminalBackground",
+                "unfocusedBackground": "terminalBackground"
+            },
+            "window":
+            {
+                "applicationTheme": "dark",
+                "experimental.rainbowFrame": false,
+                "frame": null,
+                "unfocusedFrame": null,
+                "useMica": false
+            }
+        },
+        {
+            "name": "PSP.WizardTabs",
+            "tab":
+            {
+                "background": "#2E3440FF",
+                "iconStyle": "default",
+                "showCloseButton": "always",
+                "unfocusedBackground": "#2E3440FF"
+            },
+            "tabRow":
+            {
+                "background": "#2E3440FF",
+                "unfocusedBackground": "#2E3440FF"
+            },
+            "window":
+            {
+                "applicationTheme": "light",
+                "experimental.rainbowFrame": false,
+                "frame": null,
+                "unfocusedFrame": null,
+                "useMica": false
+            }
+        }
+    ],
+    "useAcrylicInTabRow": true
+}

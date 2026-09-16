@@ -1,0 +1,9 @@
+# LF everywhere so blobs match what GitHub serves raw; Windows tools read LF fine.
+* text=auto eol=lf
+
+# Windows' theme parser expects the classic INI line endings.
+*.theme text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
