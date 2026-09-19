@@ -172,7 +172,19 @@ function Initialize-BackupDirectory {
 function Get-FileHashSafe {
     [OutputType([string])]
     param([Parameter(Mandatory)][string]$Path)
-    try { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash }
+    # .NET rather than Get-FileHash: Windows PowerShell implements that cmdlet as a script whose
+    # ForEach-Object honours -WhatIf and returns nothing, so "powershell -File install.ps1 -WhatIf"
+    # saw every file as changed. Same output format: upper-case hex.
+    try {
+        $fullPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+        $stream = [System.IO.File]::OpenRead($fullPath)
+        try {
+            $sha256 = [System.Security.Cryptography.SHA256]::Create()
+            try { return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace '-', '') }
+            finally { $sha256.Dispose() }
+        }
+        finally { $stream.Dispose() }
+    }
     catch { return $null }
 }
 
