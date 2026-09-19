@@ -7,7 +7,7 @@
     Every change is user scope (HKCU and files under the user profile), reversible, and
     made through first-party mechanisms only:
 
-      - a .theme file for wallpaper, accent colour, dark mode and cursors
+      - a .theme file for wallpaper, accent colour, dark mode, cursors and the sound scheme
       - the same WinRT API the Settings app uses for the lock screen picture
       - the registry values Settings itself writes for transparency and accent placement
       - symlinks for configuration files, listed once in the $links table below
@@ -172,7 +172,19 @@ function Initialize-BackupDirectory {
 function Get-FileHashSafe {
     [OutputType([string])]
     param([Parameter(Mandatory)][string]$Path)
-    try { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash }
+    # .NET rather than Get-FileHash: Windows PowerShell implements that cmdlet as a script whose
+    # ForEach-Object honours -WhatIf and returns nothing, so "powershell -File install.ps1 -WhatIf"
+    # saw every file as changed. Same output format: upper-case hex.
+    try {
+        $fullPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+        $stream = [System.IO.File]::OpenRead($fullPath)
+        try {
+            $sha256 = [System.Security.Cryptography.SHA256]::Create()
+            try { return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace '-', '') }
+            finally { $sha256.Dispose() }
+        }
+        finally { $stream.Dispose() }
+    }
     catch { return $null }
 }
 
@@ -428,6 +440,25 @@ function Get-PackageId {
     }
 }
 
+# The font family terminal\settings.json asks for. Read with a pattern because Windows
+# PowerShell cannot parse the comments Terminal allows in that file.
+function Get-TerminalFontFace {
+    [OutputType([string])]
+    param()
+    $settings = Get-Content -LiteralPath (Join-Path $repo 'terminal\settings.json') -Raw
+    if ($settings -match '"face"\s*:\s*"([^"]+)"') { return $Matches[1] }
+    return $null
+}
+
+function Test-FontInstalled {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$Family)
+    Add-Type -AssemblyName System.Drawing
+    $fonts = [System.Drawing.Text.InstalledFontCollection]::new()
+    try { return [bool]($fonts.Families | Where-Object { $_.Name -eq $Family }) }
+    finally { $fonts.Dispose() }
+}
+
 function Install-PackageSet {
     [CmdletBinding(SupportsShouldProcess)]
     param([string[]]$Files)
@@ -520,6 +551,11 @@ function Show-Status {
                 'missing'    { Write-StatusLine -Item $item -State 'missing' -Detail $link.Destination }
             }
         }
+        $face = Get-TerminalFontFace
+        if ($face) {
+            if (Test-FontInstalled -Family $face) { Write-StatusLine -Item 'Terminal font' -State 'ok' -Detail $face }
+            else { Write-StatusLine -Item 'Terminal font' -State 'missing' -Detail "$face is not installed; see README, Fonts" }
+        }
     }
 
     if ($InstallTools) {
@@ -567,7 +603,7 @@ if ($Skip -notcontains 'Wallpaper') {
 }
 
 if ($Skip -notcontains 'Theme') {
-    Write-Step 'Nord Dark theme (wallpaper, accent, dark mode, cursors)'
+    Write-Step 'Nord Dark theme (wallpaper, accent, dark mode, cursors, no system sounds)'
     if (-not $WhatIfPreference -and -not (Test-Path -LiteralPath $desktopImage)) {
         Write-Warn "$desktopImage is missing, so Windows will show a solid colour until the Wallpaper step runs"
     }
@@ -602,6 +638,14 @@ if ($Skip -notcontains 'Theme') {
                 $current = [string](Get-RegistryValue -Path $themesKey -Name 'CurrentTheme')
                 if ($current -ieq $themeDest) { $applied = $true }
             } until ($applied -or (Get-Date) -gt $deadline)
+            if (-not $applied) {
+                # Opening the file does nothing from an elevated or windowless session; ask the theme engine.
+                try {
+                    & (Join-Path $repo 'windows\Set-Theme.ps1') -Path $themeDest
+                    $applied = ([string](Get-RegistryValue -Path $themesKey -Name 'CurrentTheme')) -ieq $themeDest
+                }
+                catch { Write-Warn "theme engine fallback failed: $($_.Exception.Message)" }
+            }
             if ($applied) { Write-Done 'theme applied' }
             else { Write-Warn 'Windows did not confirm the theme within 20 s; check Settings > Personalization > Themes' }
 
@@ -670,6 +714,10 @@ if ($Skip -notcontains 'Links') {
     if ($applied -eq 0) { Write-Note 'nothing applies on this machine' }
     if (-not (Get-Command fastfetch -ErrorAction SilentlyContinue)) {
         Write-Note 'fastfetch is not installed; its config is in place for when it is (winget import, or -InstallTools)'
+    }
+    $face = Get-TerminalFontFace
+    if ($face -and -not (Test-FontInstalled -Family $face)) {
+        Write-Warn "$face is not installed, so Windows Terminal falls back to another font; see README, Fonts"
     }
 }
 

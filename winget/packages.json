@@ -6,8 +6,7 @@
             "Packages": [
                 { "PackageIdentifier": "Microsoft.WindowsTerminal" },
                 { "PackageIdentifier": "Microsoft.PowerToys" },
-                { "PackageIdentifier": "Fastfetch-cli.Fastfetch" },
-                { "PackageIdentifier": "Microsoft.CascadiaCode" }
+                { "PackageIdentifier": "Fastfetch-cli.Fastfetch" }
             ],
             "SourceDetails": {
                 "Argument": "https://cdn.winget.microsoft.com/cache",
