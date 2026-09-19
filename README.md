@@ -67,8 +67,12 @@ the backed-up `settings.json` back over the symlink.
 
 Everything is `HKCU` or files under the user profile, applied with first-party mechanisms:
 a `.theme` file, the Settings lock screen API, `winget`. No `HKLM`, no policies, nothing
-injected into `explorer.exe`, no `irm | iex`. The default Terminal profile is not elevated;
-"PowerShell (Admin)" is a separate profile.
+injected into `explorer.exe`, no `irm | iex`.
+
+Every Terminal profile starts elevated (`profiles.defaults.elevate` in
+`terminal/settings.json`), because that is how I work. Everything launched from such a tab,
+package install scripts included, runs as administrator. Remove that one line if you want
+ordinary tabs; "PowerShell (Admin)" stays as the elevated profile.
 
 The theme is applied by opening the `.theme` file. From an elevated or windowless session
 Windows ignores that, so `install.ps1` then falls back to `windows/Set-Theme.ps1`, which
