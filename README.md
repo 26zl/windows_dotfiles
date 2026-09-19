@@ -32,11 +32,11 @@ Needs PowerShell 7 with Developer Mode, or an elevated shell, for the symlinks. 
 | Step | Change | How |
 | --- | --- | --- |
 | Wallpaper | `desktop.png` and `lockscreen.png` at the primary display's resolution | `windows/New-Wallpaper.ps1`, generated, no downloads |
-| Theme | Wallpaper, Nord accent `#5E81AC`, dark mode, black cursors | `windows/nord-dark.theme` |
+| Theme | Wallpaper, Nord accent `#5E81AC`, dark mode, black cursors, system sounds off | `windows/nord-dark.theme` |
 | Appearance | Transparency on, accent on title bars (`-AccentOnTaskbar` for Start and taskbar) | The `HKCU` values Settings writes |
 | LockScreen | Dimmed wallpaper as the lock screen picture | The API Settings uses |
 | Links | Windows Terminal `settings.json`, fastfetch `config.jsonc` | Symlinks from the `$links` table in `install.ps1` |
-| Tools | Windows Terminal, PowerToys, fastfetch, Cascadia Code | `winget/packages.json`, only with `-InstallTools` |
+| Tools | Windows Terminal, PowerToys, fastfetch | `winget/packages.json`, only with `-InstallTools` |
 
 Anything replaced goes to `%LOCALAPPDATA%\windows_dotfiles\backup\<timestamp>` first,
 with `.reg` exports of the registry keys that changed.
@@ -50,6 +50,14 @@ Windows Terminal writes UI changes through the symlink, so they land in the repo
 `winget/packages.local.json` (extra packages, `winget export` format) are read when present
 and ignored by git.
 
+## Fonts
+
+The Terminal profile asks for `Cascadia Mono NF`. Windows Terminal bundles Cascadia Mono
+without the Nerd Font glyphs, and no winget source carries the NF build, so this is the one
+manual step: take the zip from the
+[cascadia-code releases](https://github.com/microsoft/cascadia-code/releases) (2404.23 or
+later) and install `CascadiaMonoNF.ttf`. `-Status` reports whether the font is there.
+
 ## Revert
 
 Import the `.reg` files from the oldest backup folder, open its `previous.theme`, and move
@@ -61,6 +69,10 @@ Everything is `HKCU` or files under the user profile, applied with first-party m
 a `.theme` file, the Settings lock screen API, `winget`. No `HKLM`, no policies, nothing
 injected into `explorer.exe`, no `irm | iex`. The default Terminal profile is not elevated;
 "PowerShell (Admin)" is a separate profile.
+
+The theme is applied by opening the `.theme` file. From an elevated or windowless session
+Windows ignores that, so `install.ps1` then falls back to `windows/Set-Theme.ps1`, which
+asks the theme engine (`IThemeManager` in `themeui.dll`, what Settings uses) directly.
 
 ## Credits
 
