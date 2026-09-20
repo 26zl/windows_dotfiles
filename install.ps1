@@ -620,9 +620,6 @@ if ($Skip -notcontains 'Theme') {
                 Copy-Item -LiteralPath $activeTheme -Destination (Join-Path $backupDir 'previous.theme') -Force
             } | Out-Null
         }
-        if ($env:LOCALAPPDATA -ine (Join-Path $env:USERPROFILE 'AppData\Local')) {
-            Write-Warn "LOCALAPPDATA is redirected to $env:LOCALAPPDATA; the theme expects the wallpaper under %USERPROFILE%\AppData\Local"
-        }
         Invoke-Change -Target $themeDest -Action "Install theme file from $themeSource" -Do {
             New-Item -ItemType Directory -Path $themesDir -Force | Out-Null
             Copy-Item -LiteralPath $themeSource -Destination $themeDest -Force
