@@ -44,6 +44,13 @@ with `.reg` exports of the registry keys that changed.
 To add a config file, put it in the repo and add one line to the `$links` table.
 Windows Terminal writes UI changes through the symlink, so they land in the repo.
 
+`terminal/settings.json` keeps only the profiles that exist everywhere: the two built-in
+shells, PowerShell, an elevated one, and the generated entries this machine actually has.
+Terminal regenerates a dynamic profile (WSL distributions, Visual Studio, Git Bash, Azure)
+on any machine where that software is installed, and inherits `profiles.defaults`, so the
+file does not need to list them. Entries for software a machine lacks are the opposite: they
+survive as orphans and clutter the profile list with warning icons.
+
 ## Per machine
 
 `install.local.psd1` (defaults for `Skip`, `AccentOnTaskbar`, `Copy`) and
