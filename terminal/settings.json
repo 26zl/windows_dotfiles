@@ -110,46 +110,10 @@
                 "source": "Windows.Terminal.Azure"
             },
             {
-                "guid": "{c30690a1-5608-5e6a-9cf8-92f5cbbb136f}",
-                "hidden": false,
-                "name": "Developer Command Prompt for VS 18",
-                "source": "Windows.Terminal.VisualStudio"
-            },
-            {
-                "guid": "{058b7e9e-4c19-58e1-822f-dac563d75058}",
-                "hidden": false,
-                "name": "Developer PowerShell for VS 18",
-                "source": "Windows.Terminal.VisualStudio"
-            },
-            {
                 "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
                 "hidden": false,
                 "name": "Git Bash",
                 "source": "Git"
-            },
-            {
-                "guid": "{4d5ae80e-f349-5548-b303-10e4bc766fd3}",
-                "hidden": false,
-                "name": "RHEL-10",
-                "source": "Microsoft.WSL"
-            },
-            {
-                "guid": "{b1a4d2c8-6f3e-4a7b-9e2d-1c8f5a3b7d91}",
-                "hidden": false,
-                "name": "GitHub Copilot",
-                "source": "DevConfig"
-            },
-            {
-                "guid": "{bc689851-3288-57f1-8444-11f9f3803654}",
-                "hidden": true,
-                "name": "Ubuntu",
-                "source": "Microsoft.WSL"
-            },
-            {
-                "guid": "{b9471bcd-1d41-0698-65e5-57b480a18442}",
-                "hidden": false,
-                "name": "Ubuntu",
-                "source": "ComfortShell"
             }
         ]
     },
