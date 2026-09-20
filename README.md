@@ -45,11 +45,17 @@ To add a config file, put it in the repo and add one line to the `$links` table.
 Windows Terminal writes UI changes through the symlink, so they land in the repo.
 
 `terminal/settings.json` keeps only the profiles that exist everywhere: the two built-in
-shells, PowerShell, an elevated one, and the generated entries this machine actually has.
-Terminal regenerates a dynamic profile (WSL distributions, Visual Studio, Git Bash, Azure)
-on any machine where that software is installed, and inherits `profiles.defaults`, so the
-file does not need to list them. Entries for software a machine lacks are the opposite: they
-survive as orphans and clutter the profile list with warning icons.
+shells, PowerShell, an elevated one, and Git Bash. Terminal builds a dynamic profile
+(WSL distributions, Visual Studio, Azure) on any machine where that software is installed,
+and it inherits `profiles.defaults`, so the file does not need to list them. Entries for
+software a machine lacks are the opposite: they survive as orphans and clutter the profile
+list with warning icons.
+
+WSL is the clearest case. Current WSL ships its own profiles as a fragment under
+`%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Microsoft.WSL\`, with the right icon and
+`startingDirectory`, and that fragment hides the older built-in entry for the same distro.
+A `Windows.Terminal.Wsl` profile checked into this file is therefore either hidden or an
+orphan, never the one you actually use.
 
 ## Per machine
 
