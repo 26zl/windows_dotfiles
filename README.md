@@ -44,18 +44,23 @@ with `.reg` exports of the registry keys that changed.
 To add a config file, put it in the repo and add one line to the `$links` table.
 Windows Terminal writes UI changes through the symlink, so they land in the repo.
 
-`terminal/settings.json` keeps only the profiles that exist everywhere: the two built-in
-shells, PowerShell, an elevated one, and Git Bash. Terminal builds a dynamic profile
-(WSL distributions, Visual Studio, Azure) on any machine where that software is installed,
-and it inherits `profiles.defaults`, so the file does not need to list them. Entries for
-software a machine lacks are the opposite: they survive as orphans and clutter the profile
-list with warning icons.
+`terminal/settings.json` lists every profile Terminal has generated on this machine, not just
+the portable ones. That is Terminal's rule, not mine. It records the GUID of each dynamic
+profile (WSL distributions, Visual Studio shells, fragments such as `Microsoft.WSL`) in
+`state.json` next to `settings.json`, and a profile it has seen before that has no entry in
+`settings.json` counts as deleted and stays hidden (`DisableDeletedProfiles` in the Terminal
+source). Trimming the file down to the built-in shells does not make Terminal regenerate the
+rest, it makes them vanish. To drop a profile, keep its entry and set `"hidden": true`.
 
-WSL is the clearest case. Current WSL ships its own profiles as a fragment under
+The list is therefore tied to this machine. Another machine shows the entries for software it
+lacks as orphans with a warning icon, and Terminal has no per-machine overlay for
+`settings.json`, so either live with the icons or edit the list there.
+
+Current WSL ships its own profiles as a fragment under
 `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Microsoft.WSL\`, with the right icon and
-`startingDirectory`, and that fragment hides the older built-in entry for the same distro.
-A `Windows.Terminal.Wsl` profile checked into this file is therefore either hidden or an
-orphan, never the one you actually use.
+`startingDirectory`, and that fragment hides Terminal's older built-in entry for the same
+distro. Only a distribution installed the old way, Debian from the Store here, still goes
+through the built-in `Windows.Terminal.Wsl` generator.
 
 ## Per machine
 
