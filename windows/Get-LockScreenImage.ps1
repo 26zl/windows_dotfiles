@@ -16,6 +16,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 if ($PSVersionTable.PSEdition -ne 'Desktop') {
     throw 'WinRT is not available in PowerShell 7. Run this script with powershell.exe (Windows PowerShell 5.1).'

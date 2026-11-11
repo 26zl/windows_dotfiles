@@ -17,7 +17,8 @@
     is downloaded unless -InstallTools is given. A run that finds everything in place
     changes nothing and writes nothing. Whatever is about to be replaced is moved to
     %LOCALAPPDATA%\windows_dotfiles\backup\<timestamp> first, next to .reg exports of the
-    registry keys that change.
+    registry keys that change, the path of the previous lock screen picture, and
+    changes.txt, the list of what the run did.
 
     Machine-specific defaults for Skip, AccentOnTaskbar and Copy can live in
     install.local.psd1 next to this script. That file is not tracked by git, and
@@ -56,7 +57,7 @@
 
 .NOTES
     Symlinks need PowerShell 7 with Developer Mode enabled, or an elevated shell.
-    Use -Copy otherwise.
+    Use -Copy otherwise. The script checks this before it changes anything.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -114,6 +115,17 @@ $personalizeKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Person
 $dwmKey         = 'HKCU:\Software\Microsoft\Windows\DWM'
 $wallpapersKey  = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers'
 
+# Keys the theme engine rewrites; exported before the theme runs so the .reg files hold the old values.
+$themeKeys = @(
+    'HKCU:\Control Panel\Desktop'
+    'HKCU:\Control Panel\Cursors'
+    'HKCU:\AppEvents\Schemes'
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent'
+    $personalizeKey
+    $dwmKey
+    $wallpapersKey
+)
+
 # Configuration files and where they belong. Source is relative to the repo. When says
 # what has to exist for the link to apply: the destination's folder (the app is
 # installed), the destination file itself (an unpackaged build in use), or nothing.
@@ -156,8 +168,13 @@ function Invoke-Change {
         [Parameter(Mandatory)][scriptblock]$Do
     )
     if ($script:cmdlet.ShouldProcess($Target, $Action)) {
+        # Confirmed once here; otherwise -Confirm makes every cmdlet inside $Do ask again.
+        $ConfirmPreference = 'None'
         & $Do
         $script:changes.Add("$Action -> $Target")
+        # Logged as it happens, so a run that stops part-way still says what it changed.
+        Initialize-BackupDirectory
+        Add-Content -LiteralPath (Join-Path $backupDir 'changes.txt') -Value "$Action -> $Target" -Encoding UTF8
         return $true
     }
     return $false
@@ -169,12 +186,25 @@ function Initialize-BackupDirectory {
     }
 }
 
+# Whether this shell may create symlinks: PowerShell 7 with Developer Mode, or elevated.
+function Test-SymlinkSupport {
+    [OutputType([bool])]
+    param([string]$Directory = [System.IO.Path]::GetTempPath())
+    $probe = Join-Path $Directory ('windows_dotfiles-' + [guid]::NewGuid().ToString('N'))
+    $target = "$probe.txt"
+    try {
+        Set-Content -LiteralPath $target -Value '' -WhatIf:$false -Confirm:$false
+        New-Item -ItemType SymbolicLink -Path $probe -Target $target -WhatIf:$false -Confirm:$false | Out-Null
+        return $true
+    }
+    catch { return $false }
+    finally { Remove-Item -LiteralPath $probe, $target -Force -ErrorAction SilentlyContinue -WhatIf:$false -Confirm:$false }
+}
+
 function Get-FileHashSafe {
     [OutputType([string])]
     param([Parameter(Mandatory)][string]$Path)
-    # .NET rather than Get-FileHash: Windows PowerShell implements that cmdlet as a script whose
-    # ForEach-Object honours -WhatIf and returns nothing, so "powershell -File install.ps1 -WhatIf"
-    # saw every file as changed. Same output format: upper-case hex.
+    # Not Get-FileHash: in Windows PowerShell it returns nothing under -WhatIf. Same upper-case hex.
     try {
         $fullPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
         $stream = [System.IO.File]::OpenRead($fullPath)
@@ -281,16 +311,33 @@ public static extern IntPtr SendMessageTimeoutW(IntPtr hWnd, uint msg, UIntPtr w
     [Dotfiles.Native]::SendMessageTimeoutW($hwndBroadcast, $wmSettingChange, [UIntPtr]::Zero, $Area, $smtoAbortIfHung, 5000, [ref]$result) | Out-Null
 }
 
-# Runs a helper that needs WinRT, which only Windows PowerShell 5.1 projects.
+# Runs a helper that needs WinRT, which only Windows PowerShell 5.1 projects, and stops it if it hangs.
 function Invoke-WindowsPowerShell {
     param(
         [Parameter(Mandatory)][string]$Script,
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+        [int]$TimeoutSeconds = 60
     )
-    $ps51 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    $output = & $ps51 -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "$(Split-Path -Leaf $Script) failed: $($output -join ' ')" }
-    return $output
+    $start = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'))
+    # Quoting every argument is enough: they are switches and paths, never a double quote or a trailing backslash.
+    $start.Arguments = ((@('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $Script) + $Arguments) | ForEach-Object { '"{0}"' -f $_ }) -join ' '
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $process = [System.Diagnostics.Process]::Start($start)
+    try {
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            if (-not $process.HasExited) { $process.Kill() }
+            throw "$(Split-Path -Leaf $Script) did not finish within $TimeoutSeconds s."
+        }
+        $output = @($stdout.Result -split '\r?\n' | Where-Object { $_ })
+        if ($process.ExitCode -ne 0) { throw "$(Split-Path -Leaf $Script) failed: $((@($output) + $stderr.Result.Trim()) -join ' ')" }
+        return $output
+    }
+    finally { $process.Dispose() }
 }
 
 function Test-LinkApplicable {
@@ -459,6 +506,18 @@ function Test-FontInstalled {
     finally { $fonts.Dispose() }
 }
 
+# What the theme should have set but did not. CurrentTheme alone can report a theme that only half took.
+function Get-ThemeMismatch {
+    [OutputType([string])]
+    param()
+    $wallpaper = [string](Get-RegistryValue -Path 'HKCU:\Control Panel\Desktop' -Name 'WallPaper')
+    if ($wallpaper -ine $desktopImage) { "wallpaper is '$wallpaper'" }
+    foreach ($name in 'AppsUseLightTheme', 'SystemUsesLightTheme') {
+        $value = Get-RegistryValue -Path $personalizeKey -Name $name
+        if ($null -eq $value -or [int]$value -ne 0) { "$name is '$value', expected 0" }
+    }
+}
+
 function Install-PackageSet {
     [CmdletBinding(SupportsShouldProcess)]
     param([string[]]$Files)
@@ -468,8 +527,8 @@ function Install-PackageSet {
     foreach ($file in $Files) {
         Invoke-Change -Target $file -Action 'winget import (missing packages only)' -Do {
             & winget import --import-file $file --no-upgrade --accept-source-agreements --accept-package-agreements --ignore-unavailable --disable-interactivity | Out-Host
-            # -1978335189 (0x8A15002B) means nothing was applicable, for example everything was installed already.
-            if ($LASTEXITCODE -notin 0, -1978335189) { Write-Warn "winget returned $LASTEXITCODE for $file" }
+            # 0x8A15002B (no applicable update) and 0x8A150061 (already installed) mean there was nothing to install.
+            if ($LASTEXITCODE -notin 0, -1978335189, -1978335135) { Write-Warn "winget returned $LASTEXITCODE for $file" }
         } | Out-Null
     }
 }
@@ -513,7 +572,11 @@ function Show-Status {
     if ($Skip -notcontains 'Theme') {
         $activeTheme = [string](Get-RegistryValue -Path $themesKey -Name 'CurrentTheme')
         $themeInstalled = (Test-Path -LiteralPath $themeDest) -and (Test-SameContent -PathA $themeDest -PathB $themeSource)
-        if ($themeInstalled -and $activeTheme -ieq $themeDest) { Write-StatusLine -Item 'Theme' -State 'ok' -Detail 'Nord Dark is the active theme' }
+        if ($themeInstalled -and $activeTheme -ieq $themeDest) {
+            $mismatch = @(Get-ThemeMismatch)
+            if ($mismatch.Count -eq 0) { Write-StatusLine -Item 'Theme' -State 'ok' -Detail 'Nord Dark is the active theme' }
+            else { Write-StatusLine -Item 'Theme' -State 'drift' -Detail ($mismatch -join '; ') }
+        }
         elseif (-not $themeInstalled) { Write-StatusLine -Item 'Theme' -State 'missing' -Detail 'theme file not installed or outdated' }
         else { Write-StatusLine -Item 'Theme' -State 'drift' -Detail "active theme is $activeTheme" }
 
@@ -561,9 +624,10 @@ function Show-Status {
     if ($InstallTools) {
         $ids = @(Get-PackageId -Files $packageFiles)
         if ($ids.Count -gt 0 -and (Get-Command winget -ErrorAction SilentlyContinue)) {
-            $installed = (& winget list --accept-source-agreements 2>$null) -join "`n"
             foreach ($id in $ids) {
-                if ($installed -match [regex]::Escape($id)) { Write-StatusLine -Item 'Tool' -State 'ok' -Detail $id }
+                # An exact ID query; the table output of a plain list truncates columns and matches substrings.
+                & winget list --id $id --exact --accept-source-agreements --disable-interactivity | Out-Null
+                if ($LASTEXITCODE -eq 0) { Write-StatusLine -Item 'Tool' -State 'ok' -Detail $id }
                 else { Write-StatusLine -Item 'Tool' -State 'missing' -Detail $id }
             }
         }
@@ -583,6 +647,14 @@ if (Test-Path -LiteralPath $localConfig) { Write-Note "local: $localConfig" }
 if ($Status) { Write-Host ''; Show-Status; return }
 if ($WhatIfPreference) { Write-Warn 'dry run: nothing will be changed' }
 Write-Host ''
+
+# Links come last, so find out now whether they can be made, before anything changes.
+if (-not $WhatIfPreference -and -not $useCopy -and $Skip -notcontains 'Links') {
+    $pending = @($links | Where-Object { (Test-LinkApplicable -Link $_) -and (Get-LinkState -Source (Join-Path $repo $_.Source) -Destination $_.Destination).State -ne 'linked' })
+    if ($pending.Count -gt 0 -and -not (Test-SymlinkSupport)) {
+        throw 'This shell cannot create symlinks. Enable Developer Mode, run elevated, or use -Copy.'
+    }
+}
 
 if ($InstallTools) {
     Write-Step 'Tools (winget import)'
@@ -613,7 +685,7 @@ if ($Skip -notcontains 'Theme') {
         Write-Note 'already applied'
     }
     else {
-        Backup-RegistryKey -Key 'HKCU:\Control Panel\Desktop'
+        foreach ($key in $themeKeys) { Backup-RegistryKey -Key $key }
         if ($activeTheme -and ($activeTheme -ine $themeDest) -and (Test-Path -LiteralPath $activeTheme)) {
             Invoke-Change -Target $activeTheme -Action "Copy to $backupDir\previous.theme" -Do {
                 Initialize-BackupDirectory
@@ -643,8 +715,7 @@ if ($Skip -notcontains 'Theme') {
                 }
                 catch { Write-Warn "theme engine fallback failed: $($_.Exception.Message)" }
             }
-            if ($applied) { Write-Done 'theme applied' }
-            else { Write-Warn 'Windows did not confirm the theme within 20 s; check Settings > Personalization > Themes' }
+            if (-not $applied) { Write-Warn 'Windows did not confirm the theme within 20 s; check Settings > Personalization > Themes' }
 
             # Close only the Settings window the theme launch opened, never one the user already had.
             # Settings starts after the theme is applied, so give it a moment to show up.
@@ -656,6 +727,12 @@ if ($Skip -notcontains 'Theme') {
             if ($opened.Count -gt 0) {
                 Start-Sleep -Seconds 2
                 $opened | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+
+            if ($applied) {
+                $mismatch = @(Get-ThemeMismatch)
+                if ($mismatch.Count -eq 0) { Write-Done 'theme applied' }
+                else { Write-Warn "Windows reports the theme as applied, but $($mismatch -join '; '); check Settings > Personalization" }
             }
         } | Out-Null
     }
@@ -693,6 +770,10 @@ if ($Skip -notcontains 'LockScreen') {
         }
         else {
             Invoke-Change -Target $lockImage -Action 'Set as lock screen picture' -Do {
+                if ($current) {
+                    Initialize-BackupDirectory
+                    Set-Content -LiteralPath (Join-Path $backupDir 'previous-lockscreen.txt') -Value $current -Encoding UTF8
+                }
                 $output = Invoke-WindowsPowerShell -Script (Join-Path $repo 'windows\Set-LockScreenImage.ps1') -Arguments @('-Path', $lockImage)
                 Write-Done ([string](@($output) | Select-Object -Last 1))
             } | Out-Null
@@ -730,6 +811,6 @@ if ($script:changes.Count -eq 0) {
 Write-Host ("Done: {0} change(s)." -f $script:changes.Count) -ForegroundColor Green
 if (Test-Path -LiteralPath $backupDir) {
     Write-Host "Backups: $backupDir" -ForegroundColor White
-    Write-Note 'to revert: double-click the .reg files, open previous.theme, and move a backed-up settings.json back into place'
+    Write-Note 'to revert: double-click the .reg files, open previous.theme, and put the backed-up config files back; see README, Revert'
 }
 Write-Note 'a new lock screen picture shows the next time the PC locks (Win+L)'

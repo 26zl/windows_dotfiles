@@ -17,6 +17,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 if (-not ('DotfilesDisplay' -as [type])) {
     Add-Type -TypeDefinition @'

@@ -1,14 +1,10 @@
 {
     "$help": "https://aka.ms/terminal-documentation",
     "$schema": "https://aka.ms/terminal-profiles-schema",
-    "actions": 
+    "actions":
     [
         {
-            "command": "selectAll",
-            "id": "User.profile.ctrla"
-        },
-        {
-            "command": 
+            "command":
             {
                 "action": "sendInput",
                 "input": "\u001b\r"
@@ -19,19 +15,15 @@
     "copyFormatting": "none",
     "copyOnSelect": false,
     "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
-    "keybindings": 
+    "keybindings":
     [
-        {
-            "id": "User.sendInput.8F63D3A9",
-            "keys": "shift+enter"
-        },
         {
             "id": "Terminal.DuplicatePaneAuto",
             "keys": "alt+shift+d"
         },
         {
-            "id": "User.profile.ctrla",
-            "keys": "ctrl+a"
+            "id": "User.sendInput.8F63D3A9",
+            "keys": "shift+enter"
         },
         {
             "id": "Terminal.CopyToClipboard",
@@ -42,33 +34,33 @@
             "keys": "ctrl+v"
         }
     ],
-    "newTabMenu": 
+    "newTabMenu":
     [
         {
             "type": "remainingProfiles"
         }
     ],
-    "profiles": 
+    "profiles":
     {
-        "defaults": 
+        "defaults":
         {
             "antialiasingMode": "cleartype",
             "colorScheme": "Nord",
             "cursorColor": "#D8DEE9",
             "cursorShape": "bar",
             "elevate": true,
-            "font": 
+            "font":
             {
                 "face": "Cascadia Mono NF",
                 "size": 11
             },
-            "historySize": 1000000,
+            "historySize": 100000,
             "opacity": 75,
             "padding": "8, 8, 8, 8",
             "scrollbarState": "always",
             "useAcrylic": true
         },
-        "list": 
+        "list":
         [
             {
                 "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo",
@@ -150,10 +142,16 @@
                 "hidden": false,
                 "name": "Developer PowerShell for VS 18",
                 "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{569e4f2f-de87-5b06-94a1-6dac8b70920e}",
+                "hidden": false,
+                "name": "podman-machine-default",
+                "source": "Microsoft.WSL"
             }
         ]
     },
-    "schemes": 
+    "schemes":
     [
         {
             "background": "#2E3440",
@@ -180,23 +178,23 @@
         }
     ],
     "theme": "Nord",
-    "themes": 
+    "themes":
     [
         {
             "name": "Nord",
-            "tab": 
+            "tab":
             {
                 "background": "terminalBackground",
                 "iconStyle": "default",
                 "showCloseButton": "always",
                 "unfocusedBackground": "#3B4252FF"
             },
-            "tabRow": 
+            "tabRow":
             {
                 "background": "terminalBackground",
                 "unfocusedBackground": "terminalBackground"
             },
-            "window": 
+            "window":
             {
                 "applicationTheme": "dark",
                 "experimental.rainbowFrame": false,
@@ -207,19 +205,19 @@
         },
         {
             "name": "PSP.WizardTabs",
-            "tab": 
+            "tab":
             {
                 "background": "#2E3440FF",
                 "iconStyle": "default",
                 "showCloseButton": "always",
                 "unfocusedBackground": "#2E3440FF"
             },
-            "tabRow": 
+            "tabRow":
             {
                 "background": "#2E3440FF",
                 "unfocusedBackground": "#2E3440FF"
             },
-            "window": 
+            "window":
             {
                 "applicationTheme": "light",
                 "experimental.rainbowFrame": false,

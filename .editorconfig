@@ -16,3 +16,7 @@ trim_trailing_whitespace = false
 
 [*.theme]
 end_of_line = crlf
+
+# Windows Terminal rewrites this file through the symlink, without a final newline.
+[terminal/settings.json]
+insert_final_newline = false

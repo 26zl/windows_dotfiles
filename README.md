@@ -23,23 +23,31 @@ cd windows_dotfiles
 .\install.ps1 -Status   # later: what is applied, what has drifted
 ```
 
-Needs PowerShell 7 with Developer Mode, or an elevated shell, for the symlinks. Add
-`-Copy` to copy files instead. `-Skip` leaves steps out, `-InstallTools` also runs
-`winget import` for the tool set. A run with nothing to change writes nothing.
+Needs PowerShell 7 with Developer Mode, or an elevated shell, for the symlinks, and checks
+that before its first change. Add `-Copy` to copy files instead. `-Skip` leaves steps out,
+`-InstallTools` also runs `winget import` for the tool set. A run with nothing to change
+writes nothing.
+Windows PowerShell 5.1 runs no scripts under its default `Restricted` execution policy;
+start it there with `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
 
 ## What it does
 
 | Step | Change | How |
 | --- | --- | --- |
 | Wallpaper | `desktop.png` and `lockscreen.png` at the primary display's resolution | `windows/New-Wallpaper.ps1`, generated, no downloads |
-| Theme | Wallpaper, Nord accent `#5E81AC`, dark mode, black cursors, system sounds off | `windows/nord-dark.theme` |
+| Theme | Wallpaper, Nord accent `#5E81AC`, dark mode, black cursors, system sounds off, no screen saver | `windows/nord-dark.theme` |
 | Appearance | Transparency on, accent on title bars (`-AccentOnTaskbar` for Start and taskbar) | The `HKCU` values Settings writes |
 | LockScreen | Dimmed wallpaper as the lock screen picture | The API Settings uses |
 | Links | Windows Terminal `settings.json`, fastfetch `config.jsonc` | Symlinks from the `$links` table in `install.ps1` |
 | Tools | Windows Terminal, PowerToys, fastfetch | `winget/packages.json`, only with `-InstallTools` |
 
-Anything replaced goes to `%LOCALAPPDATA%\windows_dotfiles\backup\<timestamp>` first,
-with `.reg` exports of the registry keys that changed.
+Files that get replaced go to `%LOCALAPPDATA%\windows_dotfiles\backup\<timestamp>` first,
+with `.reg` exports of the registry keys that change (taken before the theme is applied), a
+copy of the previous theme and `previous-lockscreen.txt`, the path of the lock screen picture
+it replaced. `changes.txt` in the same folder lists every change the run made.
+
+The theme sets no screen saver, like the themes that ship with Windows; Microsoft deprecated
+screen savers, and a `.theme` without one turns the current one off.
 
 To add a config file, put it in the repo and add one line to the `$links` table.
 Windows Terminal writes UI changes through the symlink, so they land in the repo.
@@ -62,6 +70,10 @@ Current WSL ships its own profiles as a fragment under
 distro. Only a distribution installed the old way, Debian from the Store here, still goes
 through the built-in `Windows.Terminal.Wsl` generator.
 
+The `PSP.WizardTabs` theme in that file comes from the setup wizard of
+[PowerShellPerfect](https://github.com/26zl/PowerShellPerfect), which edits Terminal's settings
+and so writes through the symlink too. Nothing here uses it.
+
 ## Per machine
 
 `install.local.psd1` (defaults for `Skip`, `AccentOnTaskbar`, `Copy`) and
@@ -78,8 +90,14 @@ later) and install `CascadiaMonoNF.ttf`. `-Status` reports whether the font is t
 
 ## Revert
 
-Import the `.reg` files from the oldest backup folder, open its `previous.theme`, and move
-the backed-up `settings.json` back over the symlink.
+Import the `.reg` files from the oldest backup folder, open its `previous.theme`, and
+replace each symlink (`settings.json`, `config.jsonc`) with its backed-up file, or delete
+it if there is none. Each `.reg` file holds a whole key as it was before the run, so importing
+it also undoes later changes to other values in that key; the screen saver comes back with
+`control-panel-desktop.reg`. Choose the picture named in `previous-lockscreen.txt`, or
+Spotlight, again under Settings > Personalization > Lock screen. After that
+`%LOCALAPPDATA%\windows_dotfiles` and
+`%LOCALAPPDATA%\Microsoft\Windows\Themes\nord-dark.theme` can go.
 
 ## Safety
 
@@ -89,12 +107,17 @@ injected into `explorer.exe`, no `irm | iex`.
 
 Every Terminal profile starts elevated (`profiles.defaults.elevate` in
 `terminal/settings.json`), because that is how I work. Everything launched from such a tab,
-package install scripts included, runs as administrator. Remove that one line if you want
-ordinary tabs; "PowerShell (Admin)" stays as the elevated profile.
+package install scripts included, runs as administrator. The installed `settings.json` is a
+symlink to this repo, which any process running as you can edit without elevation: it can
+change a profile's `commandline`, and that command then runs as administrator the next time
+Terminal starts and you accept the UAC prompt. If that trade-off is not for you, remove the
+one line and open the "PowerShell (Admin)" profile when you need administrator rights.
 
 The theme is applied by opening the `.theme` file. From an elevated or windowless session
 Windows ignores that, so `install.ps1` then falls back to `windows/Set-Theme.ps1`, which
-asks the theme engine (`IThemeManager` in `themeui.dll`, what Settings uses) directly.
+asks the theme engine (`IThemeManager` in `themeui.dll`, what Settings uses) directly. That
+interface is undocumented, so afterwards `install.ps1` checks that the wallpaper and dark mode
+really changed and warns if they did not; `-Status` reports the same as drift.
 
 ## Credits
 

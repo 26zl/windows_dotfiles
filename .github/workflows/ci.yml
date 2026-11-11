@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   check:
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 20
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
@@ -20,13 +21,16 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install PSScriptAnalyzer
+      - name: Install PSScriptAnalyzer and Pester
         shell: pwsh
-        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.24.0 -Force -Scope CurrentUser
+        run: |
+          Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser
+          Install-Module -Name Pester -RequiredVersion 5.7.1 -Force -SkipPublisherCheck -Scope CurrentUser
 
       - name: Lint PowerShell
         shell: pwsh
         run: |
+          Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
           $results | Format-Table -AutoSize
           if ($results | Where-Object Severity -in 'Error', 'Warning') {
@@ -43,6 +47,21 @@ jobs:
           # fastfetch's file is JSONC; strip full-line comments before parsing.
           (Get-Content ./fastfetch/config.jsonc | Where-Object { $_ -notmatch '^\s*//' }) -join "`n" | ConvertFrom-Json | Out-Null
           Write-Host 'JSON files parse'
+
+      - name: Unit tests (PowerShell 7)
+        shell: pwsh
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          $result = Invoke-Pester -Path ./tests -Output Detailed -PassThru
+          if ($result.Result -ne 'Passed') { exit 1 }
+
+      - name: Unit tests (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          # The Pester 5.7.1 that the install step put in the PowerShell 7 module folder.
+          Import-Module (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell\Modules\Pester\5.7.1\Pester.psd1')
+          $result = Invoke-Pester -Path ./tests -Output Detailed -PassThru
+          if ($result.Result -ne 'Passed') { exit 1 }
 
       - name: Render a small wallpaper
         shell: pwsh
@@ -63,3 +82,45 @@ jobs:
       - name: Status report on a clean machine
         shell: pwsh
         run: ./install.ps1 -Status -Skip LockScreen
+
+      # The steps below change the runner for real; it is thrown away after the job.
+      # Theme and LockScreen need an interactive desktop, so they stay manual tests.
+      - name: Reject an unknown step in install.local.psd1
+        shell: pwsh
+        run: |
+          Set-Content -Path ./install.local.psd1 -Value "@{ Skip = @('Bogus') }"
+          try {
+            ./install.ps1 -WhatIf
+            throw 'install.ps1 accepted an unknown step'
+          }
+          catch { if ("$_" -notmatch "unknown step 'Bogus'") { throw } }
+          finally { Remove-Item ./install.local.psd1 }
+
+      - name: Apply as copies, then check that a second run changes nothing
+        shell: pwsh
+        run: |
+          ./install.ps1 -Skip Theme, LockScreen -Copy
+          $again = ./install.ps1 -Skip Theme, LockScreen -Copy 6>&1 | Out-String
+          if ($again -notmatch 'Nothing to do') { throw "a second run changed something:`n$again" }
+
+      - name: Switch to symlinks, then check backups, a second run and the status report
+        shell: pwsh
+        run: |
+          ./install.ps1 -Skip Theme, LockScreen
+          $backups = "$env:LOCALAPPDATA/windows_dotfiles/backup"
+          if (-not (Get-ChildItem $backups -Recurse -Filter config.jsonc)) { throw 'the copied config.jsonc was not backed up before it was linked' }
+          if (-not (Get-ChildItem $backups -Recurse -Filter changes.txt)) { throw 'no changes.txt was written' }
+          $again = ./install.ps1 -Skip Theme, LockScreen 6>&1 | Out-String
+          if ($again -notmatch 'Nothing to do') { throw "a second run changed something:`n$again" }
+          $status = ./install.ps1 -Status -Skip Theme, LockScreen 6>&1 | Out-String
+          $status
+          # The runner has no Cascadia Mono NF, so the font is the one gap allowed.
+          if ($status -match '(\d+) item\(s\) need attention' -and ($Matches[1] -ne '1' -or $status -notmatch 'Terminal font')) {
+            throw 'the status report shows drift beyond the missing font'
+          }
+
+      - name: Same state seen from Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $again = ./install.ps1 -Skip Theme, LockScreen 6>&1 | Out-String
+          if ($again -notmatch 'Nothing to do') { throw "Windows PowerShell 5.1 sees changes:`n$again" }

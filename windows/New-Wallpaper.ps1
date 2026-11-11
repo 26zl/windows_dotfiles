@@ -219,7 +219,7 @@ if ($PSCmdlet.ShouldProcess($OutputDirectory, "Render desktop.png and lockscreen
     Save-Render -Path $lockPath -LockScreen $true -PreviewPath $lockPreview
     $sw.Stop()
 
-    # Lets install.ps1 skip the render when the generator, size and seed are unchanged.
+    # Lets install.ps1 skip the render when the generator and size are unchanged.
     [ordered]@{
         Generator = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
         Width     = $Width

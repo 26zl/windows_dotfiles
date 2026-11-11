@@ -25,6 +25,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 if ($PSVersionTable.PSEdition -ne 'Desktop') {
     throw 'WinRT is not available in PowerShell 7. Run this script with powershell.exe (Windows PowerShell 5.1).'
@@ -45,18 +46,19 @@ $asTaskAction = $extensions | Where-Object { $_.GetParameters()[0].ParameterType
 function Wait-Operation {
     param($Operation, [Type]$ResultType)
     $task = $asTaskGeneric.MakeGenericMethod($ResultType).Invoke($null, @($Operation))
-    $task.Wait()
+    if (-not $task.Wait(30000)) { throw 'The lock screen API did not answer within 30 s.' }
     $task.Result
 }
 
 function Wait-Action {
     param($Operation)
     $task = $asTaskAction.Invoke($null, @($Operation))
-    $task.Wait()
+    if (-not $task.Wait(30000)) { throw 'The lock screen API did not answer within 30 s.' }
 }
 
 $file = Wait-Operation ([Windows.Storage.StorageFile]::GetFileFromPathAsync($fullPath)) ([Windows.Storage.StorageFile])
 Wait-Action ([Windows.System.UserProfile.LockScreen]::SetImageFileAsync($file))
 
 $applied = [Windows.System.UserProfile.LockScreen]::OriginalImageFile
-Write-Output "Lock screen picture is now $($applied.AbsoluteUri)"
+if ($applied) { Write-Output "Lock screen picture is now $($applied.AbsoluteUri)" }
+else { Write-Output 'Lock screen picture set; Windows did not report its path.' }

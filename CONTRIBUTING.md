@@ -8,25 +8,31 @@ Safety section describes.
 ## Setup
 
 You need Windows 11 and PowerShell 7; Windows PowerShell 5.1 has to keep
-working too, so `install.ps1` is tested in both. The lint is PSScriptAnalyzer,
-pinned to the version CI uses:
+working too, so `install.ps1` is tested in both. The lint is PSScriptAnalyzer and
+the tests use Pester, both pinned to the versions CI uses:
 
 ```powershell
 git clone https://github.com/26zl/windows_dotfiles.git
 cd windows_dotfiles
-Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.24.0 -Scope CurrentUser
+Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser
+Install-Module -Name Pester -RequiredVersion 5.7.1 -SkipPublisherCheck -Scope CurrentUser
 ```
 
 ## Before you open a pull request
 
-Run what CI (`.github/workflows/ci.yml`) runs on a `windows-latest` runner:
+Run what CI (`.github/workflows/ci.yml`) runs on a `windows-2025` runner:
 
 ```powershell
 Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+Invoke-Pester -Path ./tests              # in pwsh and in powershell.exe
 .\windows\New-Wallpaper.ps1 -OutputDirectory "$env:TEMP\wallpapers" -Width 688 -Height 288 -Preview
 .\install.ps1 -WhatIf                   # in pwsh and in powershell.exe
 .\install.ps1 -Status -Skip LockScreen
 ```
+
+The tests in `tests\` load the functions from `install.ps1` without running it and only
+write to Pester's `TestDrive`. After them, CI applies the installer for real on its
+throwaway runner, Theme and LockScreen left out; those steps are not for your own machine.
 
 Warnings count as failures; the only rule turned off is `PSAvoidUsingWriteHost`
 (see `PSScriptAnalyzerSettings.psd1`). `terminal\settings.json`,
